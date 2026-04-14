@@ -171,13 +171,18 @@ public class SkyGridChunkGenerator extends ChunkGenerator {
                             state = state.setValue(LeavesBlock.PERSISTENT, true);
                         }
 
-                        chunk.setBlockState(mutablePos, state, false);
-
-                        // Saplings need dirt below them to survive and grow
-                        if (isSapling(state) && y - 1 >= minY) {
-                            mutablePos.set(x, y - 1, z);
+                        // Saplings: place dirt at the grid position, sapling on top
+                        if (isSapling(state) && y + 1 < maxY) {
                             chunk.setBlockState(mutablePos, Blocks.DIRT.defaultBlockState(), false);
-                            mutablePos.set(x, y, z);
+                            mutablePos.set(x, y + 1, z);
+                            chunk.setBlockState(mutablePos, state, false);
+                        // MA seeds: place farmland at the grid position, seed on top
+                        } else if (needsFarmland(state) && y + 1 < maxY) {
+                            chunk.setBlockState(mutablePos, Blocks.FARMLAND.defaultBlockState(), false);
+                            mutablePos.set(x, y + 1, z);
+                            chunk.setBlockState(mutablePos, state, false);
+                        } else {
+                            chunk.setBlockState(mutablePos, state, false);
                         }
                     }
                 }
@@ -296,6 +301,12 @@ public class SkyGridChunkGenerator extends ChunkGenerator {
             || state.is(Blocks.AZALEA)
             || state.is(Blocks.FLOWERING_AZALEA)
             || state.is(Blocks.MANGROVE_PROPAGULE);
+    }
+
+    /** Returns true for Mystical Agriculture seeds, which need farmland placed below them. */
+    private static boolean needsFarmland(BlockState state) {
+        net.minecraft.resources.ResourceLocation id = BuiltInRegistries.BLOCK.getKey(state.getBlock());
+        return id.getNamespace().equals("mysticalagriculture") && id.getPath().endsWith("_seeds");
     }
 
     private long hashPos(int x, int y, int z) {
