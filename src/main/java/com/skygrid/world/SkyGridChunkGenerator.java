@@ -90,17 +90,25 @@ public class SkyGridChunkGenerator extends ChunkGenerator {
         List<BlockState> pool = new ArrayList<>();
         SkyGridConfig config = SkyGridConfig.getForDimension(dimension);
 
+        // Build a weight lookup: blockId -> weight
+        Map<String, Integer> weightMap = new HashMap<>();
+        for (SkyGridConfig.BlockEntry entry : config.getBlockEntries())
+            weightMap.put(entry.id(), entry.weight());
+
         for (Block block : BuiltInRegistries.BLOCK) {
             if (EXCLUDED_BLOCKS.contains(block)) continue;
             BlockState state = block.defaultBlockState();
             if (state.isAir()) continue;
             String blockId = BuiltInRegistries.BLOCK.getKey(block).toString();
             if (!config.isAllowed(blockId)) continue;
-            pool.add(state);
+            // Add the block N times according to its weight (default 1)
+            int weight = weightMap.getOrDefault(blockId, 1);
+            for (int i = 0; i < weight; i++) pool.add(state);
         }
 
-        SkyGridMod.LOGGER.info("SkyGrid [{}] block pool: {}/{} blocks (mode: {}).",
-            dimension, pool.size(), BuiltInRegistries.BLOCK.size(), config.getMode());
+        long uniqueBlocks = pool.stream().distinct().count();
+        SkyGridMod.LOGGER.info("SkyGrid [{}] block pool: {}/{} unique blocks, {} weighted slots (mode: {}).",
+            dimension, uniqueBlocks, BuiltInRegistries.BLOCK.size(), pool.size(), config.getMode());
         return pool.toArray(new BlockState[0]);
     }
 
@@ -199,6 +207,20 @@ public class SkyGridChunkGenerator extends ChunkGenerator {
                         chunk.setBlockState(mutablePos, Blocks.FARMLAND.defaultBlockState(), false);
                         mutablePos.set(x, y + 1, z);
                         chunk.setBlockState(mutablePos, state, false);
+                    // Cactus → sand below, cactus on top
+                    } else if (state.is(Blocks.CACTUS) && y + 1 < maxY) {
+                        chunk.setBlockState(mutablePos, Blocks.SAND.defaultBlockState(), false);
+                        mutablePos.set(x, y + 1, z);
+                        chunk.setBlockState(mutablePos, state, false);
+                    // Sugar cane → sand below, sugar cane on top, water beside sand
+                    } else if (state.is(Blocks.SUGAR_CANE) && y + 1 < maxY) {
+                        chunk.setBlockState(mutablePos, Blocks.SAND.defaultBlockState(), false);
+                        mutablePos.set(x, y + 1, z);
+                        chunk.setBlockState(mutablePos, state, false);
+                        if (x + 1 < startX + 16) {
+                            mutablePos.set(x + 1, y, z);
+                            chunk.setBlockState(mutablePos, Blocks.WATER.defaultBlockState(), false);
+                        }
                     } else {
                         chunk.setBlockState(mutablePos, state, false);
                     }
