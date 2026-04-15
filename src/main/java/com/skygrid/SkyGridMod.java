@@ -7,6 +7,7 @@ import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.RegisterCommandsEvent;
+import net.neoforged.neoforge.event.level.LevelEvent;
 import net.neoforged.neoforge.registries.DeferredRegister;
 import com.mojang.serialization.MapCodec;
 import net.minecraft.world.level.chunk.ChunkGenerator;
@@ -30,6 +31,9 @@ public class SkyGridMod {
         // Register our chunk generator codec on the mod event bus
         modEventBus.addListener(this::registerChunkGenerator);
 
+        // Place the starter platform the first time the overworld loads
+        NeoForge.EVENT_BUS.addListener(this::onLevelLoad);
+
         // Register commands on the game event bus
         NeoForge.EVENT_BUS.addListener(this::onRegisterCommands);
 
@@ -43,6 +47,12 @@ public class SkyGridMod {
             () -> SkyGridChunkGenerator.CODEC
         );
         LOGGER.info("SkyGrid chunk generator registered.");
+    }
+
+    private void onLevelLoad(LevelEvent.Load event) {
+        if (event.getLevel() instanceof net.minecraft.server.level.ServerLevel level) {
+            SkyGridPlatform.placeIfNeeded(level);
+        }
     }
 
     private void onRegisterCommands(RegisterCommandsEvent event) {
