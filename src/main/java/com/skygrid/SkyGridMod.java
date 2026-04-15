@@ -24,8 +24,8 @@ public class SkyGridMod {
     public SkyGridMod(IEventBus modEventBus) {
         LOGGER.info("SkyGrid mod loading!");
 
-        // Load config first
-        SkyGridConfig.load();
+        // Load all dimension configs — overworld, nether, and end each get their own
+        SkyGridConfig.loadAll();
 
         // Register our chunk generator codec on the mod event bus
         modEventBus.addListener(this::registerChunkGenerator);
